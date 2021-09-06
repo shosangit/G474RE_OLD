@@ -1,0 +1,348 @@
+#include "stm32g4xx_hal.h"
+#include "BC20.h"
+#include "usart.h"
+#include "gpio.h"
+#include <string.h>
+#include <stdio.h>
+
+//#define BC20_ONENET_INFO	"AT+QIOPEN=1,0,\"TCP\",\"183.230.40.40\",1811,1234,0\r\n"		//TCP连接
+#define BC20_MQTT_INFO "AT+QMTOPEN=0,\"mqtts.heclouds.com\",1883\r\n"                                                                                                                           //打开mqtt客户端
+#define BC20_CONNECT_INFO "AT+QMTCONN=0,\"wuhu1\",\"451120\",\"version=2018-10-31&res=products%2F451120%2Fdevices%2Fwuhu1&et=1703433600&method=md5&sign=LSVisLEm3%2F03R6bkkmYe%2FA%3D%3D\"\r\n" //连接MQTT服务器
+
+extern uint8_t usart1_rx_flag;
+extern uint8_t usart1_dma_buffer[512];
+extern uint8_t usart1_rx_buffer[1024];
+extern uint16_t usart1_rx_len;
+extern uint16_t usart1_dma_len;
+extern uint8_t BC20flag;
+extern gps_msg gpsmsg;
+extern BC20_Data_TypeDef BC20_GPS_Data;
+uint8_t wnb = 0;
+
+/***************************************************\
+* 函数名称: NMEA_Comma_Pos
+*    函数功能：从buf里面得到第cx个逗号所在的位置
+*    输入值：
+*    返回值：0~0xFE，代表逗号所在位置的便宜
+*                     0xFF，代表不存在第cx个逗号
+***************************************************/
+
+uint8_t NMEA_Comma_Pos(uint8_t *buf, uint8_t cx)
+{
+    uint8_t *p = buf;
+    while (cx)
+    {
+        if (*buf == '*' || *buf < ' ' || *buf > 'z')
+            return 0xFF;
+        if (*buf == ',')
+            cx--;
+        buf++;
+    }
+    return buf - p;
+}
+/***************************************************\
+* 函数名称: NMEA_Pow
+*    函数功能：返回m的n次方值
+*    输入值：底数m和指数n
+*    返回值：m^n
+***************************************************/
+uint32_t NMEA_Pow(uint8_t m, uint8_t n)
+{
+    uint32_t result = 1;
+    while (n--)
+        result *= m;
+    return result;
+}
+/***************************************************\
+* 函数名称: NMEA_Str2num
+*    函数功能：str数字转换为（int）数字，以','或者'*'结束
+*    输入值：buf，数字存储区
+*                     dx，小数点位数，返回给调用函数
+*    返回值：转换后的数值
+***************************************************/
+int NMEA_Str2num(uint8_t *buf, uint8_t *dx)
+{
+    uint8_t *p = buf;
+    uint32_t ires = 0, fres = 0;
+    uint8_t ilen = 0, flen = 0, i;
+    uint8_t mask = 0;
+    int res;
+    while (1)
+    {
+        if (*p == '-')
+        {
+            mask |= 0x02;
+            p++;
+        } //说明有负数
+        if (*p == ',' || *p == '*')
+            break; //遇到结束符
+        if (*p == '.')
+        {
+            mask |= 0x01;
+            p++;
+        }                                //遇到小数点
+        else if (*p > '9' || (*p < '0')) //数字不在0和9之内，说明有非法字符
+        {
+            ilen = 0;
+            flen = 0;
+            break;
+        }
+        if (mask & 0x01)
+            flen++; //小数点的位数
+        else
+            ilen++; //str长度加一
+        p++;        //下一个字符
+    }
+    if (mask & 0x02)
+        buf++;                 //移到下一位，除去负号
+    for (i = 0; i < ilen; i++) //得到整数部分数据
+    {
+        ires += NMEA_Pow(10, ilen - 1 - i) * (buf[i] - '0');
+    }
+    if (flen > 5)
+        flen = 5; //最多取五位小数
+    *dx = flen;
+    for (i = 0; i < flen; i++) //得到小数部分数据
+    {
+        fres += NMEA_Pow(10, flen - 1 - i) * (buf[ilen + 1 + i] - '0');
+    }
+    res = ires * NMEA_Pow(10, flen) + fres;
+    if (mask & 0x02)
+        res = -res;
+    return res;
+}
+/***************************************************\
+* 函数名称: NMEA_BDS_GPRMC_Analysis
+*    函数功能：解析GPRMC信息
+*    输入值：gpsx,NMEA信息结构体
+*                 buf：接收到的GPS数据缓冲区首地址
+***************************************************/
+void NMEA_BDS_GPRMC_Analysis(gps_msg *gpsmsg, uint8_t *buf)
+{
+    uint8_t *p4, dx;
+    uint8_t posx;
+    uint32_t temp;
+    float rs;
+    p4 = (uint8_t *)strstr((const char *)buf, "$GNGLL"); //"$GNGLL",经常有&和GPRMC分开的情况,故只判断GPRMC.
+    posx = NMEA_Comma_Pos(p4, 1);                        //得到纬度
+    if (posx != 0XFF)
+    {
+        temp = NMEA_Str2num(p4 + posx, &dx);
+        gpsmsg->latitude_bd = temp / NMEA_Pow(10, dx + 2);                                              //得到°
+        rs = temp % NMEA_Pow(10, dx + 2);                                                               //得到'
+        gpsmsg->latitude_bd = gpsmsg->latitude_bd * NMEA_Pow(10, 5) + (rs * NMEA_Pow(10, 5 - dx)) / 60; //转换为°
+    }
+    posx = NMEA_Comma_Pos(p4, 2); //南纬还是北纬
+    if (posx != 0XFF)
+        gpsmsg->nshemi_bd = *(p4 + posx);
+    posx = NMEA_Comma_Pos(p4, 3); //得到经度
+    if (posx != 0XFF)
+    {
+        temp = NMEA_Str2num(p4 + posx, &dx);
+        gpsmsg->longitude_bd = temp / NMEA_Pow(10, dx + 2);                                               //得到°
+        rs = temp % NMEA_Pow(10, dx + 2);                                                                 //得到'
+        gpsmsg->longitude_bd = gpsmsg->longitude_bd * NMEA_Pow(10, 5) + (rs * NMEA_Pow(10, 5 - dx)) / 60; //转换为°
+    }
+    posx = NMEA_Comma_Pos(p4, 4); //东经还是西经
+    if (posx != 0XFF)
+        gpsmsg->ewhemi_bd = *(p4 + posx);
+}
+
+void BC20_GPS_Read_Data(void)
+{
+    /* 分析缓冲区的字符串，解析GPS数据 */
+    NMEA_BDS_GPRMC_Analysis(&gpsmsg, (uint8_t *)usart1_rx_buffer);
+
+    /* 将解析到的经纬度数据存放到结构体中，便于其他函数使用 */
+    BC20_GPS_Data.Longitude = (float)((float)gpsmsg.longitude_bd / 100000);
+    BC20_GPS_Data.Latitude = (float)((float)gpsmsg.latitude_bd / 100000);
+}
+
+void BC20_Clear(void)
+{
+
+    memset(usart1_rx_buffer, 0, sizeof(usart1_rx_buffer));
+}
+
+int BC20_SendCmd(char *cmd, char *reply, int wait)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 0xffff);
+    printf("[BC20_SendCmd] %s\r\n", cmd);
+
+    HAL_Delay(wait);
+
+    if (usart1_rx_flag == 1) //收到中断
+    {
+        if (strstr((char *)usart1_rx_buffer, reply)) //是否包含数据
+        {
+            printf("CMD->%s\r\n+++YES\r\n", usart1_rx_buffer);
+            usart1_rx_flag = 0;
+            BC20_Clear();
+            return 1;
+        }
+        else if (strstr((char *)usart1_rx_buffer, "ERROR"))
+        {
+            printf("CMD->%s\r\n+++ERROR\r\n", usart1_rx_buffer);
+            usart1_rx_flag = 0;
+            BC20_Clear();
+            return 0;
+        }
+        else
+        {
+            printf("CMD->%s\r\n+++NO\r\n", usart1_rx_buffer);
+            usart1_rx_flag = 0;
+            return 0;
+        }
+    }
+    else
+    {   //未进中断
+        printf("\r\n+++null\r\n");
+        usart1_rx_flag = 0;
+        return 0;
+    };
+}
+
+void BC20_SendMes(char *mes)
+{
+
+    char mesbody[200];
+    sprintf(mesbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": 123,\"dp\": {\"state\": [{\"v\": \"%s\",}]}}\r\n", *(&mes));
+
+    HAL_UART_Receive_DMA(&huart1, usart1_rx_buffer, sizeof(usart1_rx_buffer));
+    if (HAL_UART_Transmit(&huart1, (unsigned char *)mesbody, (uint8_t)strlen(mesbody), 500) == HAL_OK)
+        printf("%s\n", usart1_rx_buffer);
+}
+
+void BC20_SendGPS(void)
+{
+
+    BC20_Clear();
+    char gpsbody[200];
+
+    if (BC20_SendCmd("AT+CSQ\r\n", "99", 2000) != 1)
+    {
+
+        if (BC20_GNSS_GET() == 0)
+            return;
+
+        HAL_Delay(200);
+
+        BC20_GPS_Read_Data();
+        printf("%f,%f", BC20_GPS_Data.Longitude, BC20_GPS_Data.Latitude);
+        sprintf(gpsbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": 123,\"dp\":{\"location\":[{\"v\":{\"lon\":%f,\"lat\":%f}}]}}\r\n", BC20_GPS_Data.Longitude, BC20_GPS_Data.Latitude);
+
+        BC20_Clear();
+    }
+    else
+        printf("没有信号，请到开阔场所使用");
+}
+
+unsigned char BC20_GNSS_GET(void) //获取gps数据
+{
+
+    char cmd1[] = {"AT+QGNSSRD=\"NMEA/GLL\"\r\n"};
+    BC20_Clear();
+
+    if (BC20_SendCmd("AT+QGNSSC?\r\n", "1", 1000) != 1)
+    {
+        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 2000))
+            ;
+    }
+    HAL_Delay(500);
+    if (BC20_SendCmd("AT+QGNSSRD?\r\n", "99,99", 2000) != 1)
+        return 0;
+    HAL_UART_Receive_DMA(&huart1, usart1_rx_buffer, sizeof(usart1_rx_buffer));
+
+    HAL_UART_Transmit(&huart1, (uint8_t *)cmd1, strlen(cmd1), 0xffff);
+    printf("GPS GET OVER！\r\n");
+    return *usart1_rx_buffer;
+}
+
+void BC20_GNSS_INIT(void) //初始化gps
+{
+    BC20_Clear();
+
+    if (!BC20_SendCmd("AT+QGNSSAGPS?\r\n", "1", 500)) //判断是否开启了AGPS，如果没开启则开启
+    {
+        while (!BC20_SendCmd("AT+QGNSSAGPS=1\r\n", "OK", 250)) //开启AGPS功能
+            printf("已经开启AGPS功能！\r\n");
+    }
+
+    if (!BC20_SendCmd("AT+QGNSSC?\r\n", "1", 250)) //判断是否开启了gnss，如果没开启则开启
+    {
+        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 500))
+            printf("GPS初始化完毕！\r\n");
+    }
+}
+
+void BC20_RESTART(void)
+{
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+    HAL_Delay(60);
+    printf("Restart Over!\r\n");
+}
+
+void BC20_RESET(void)
+{
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+    HAL_Delay(40);
+    printf("Reset Over!\r\n");
+}
+void BC20_Init(void) //初始化BC20模块
+{
+    printf("BC20初始化中...\r\n");
+
+	  printf("BC20开机...\r\n");
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+    HAL_Delay(600);
+    printf("BC20开机完毕\r\n");
+	
+    BC20_RESET();
+
+    while (!BC20_SendCmd("AT\r\n", "OK", 200))
+    {
+        wnb++;
+        if (wnb >= 3)
+        {
+            wnb = 0;
+            BC20_Init();
+        }
+    }
+
+    while (!BC20_SendCmd("AT+CPSMS=0\r\n", "OK", 150))
+        HAL_Delay(50);
+    printf("AT+CPSMS Over!\r\n");
+    HAL_Delay(50);
+
+    while (!BC20_SendCmd("AT+QMTCFG=\"version\",0,4\r\n", "OK", 200)) //设置mqtt版本为3.1.1
+        HAL_Delay(50);
+    printf("Version OVER!\r\n");
+    HAL_Delay(50);
+
+    while (!BC20_SendCmd(BC20_MQTT_INFO, "0,0", 3000))
+    {
+        wnb++;
+        if (wnb >= 8)
+        {
+            wnb = 0;
+            BC20_Init();
+        }
+    }
+
+    printf("MQTT OVER!\r\n");
+
+    while (!BC20_SendCmd(BC20_CONNECT_INFO, "0,0,0", 2000))
+    {
+        wnb = 0;
+        wnb++;
+        if (wnb >= 5)
+        {
+            wnb = 0;
+            BC20_Init();
+        }
+    }
+
+    printf("CONNECT OVER!\r\n");
+
+    BC20flag = 1;
+}
