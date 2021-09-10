@@ -33,7 +33,7 @@ void BC20_SendData(unsigned char *data);
 
 unsigned char *BC20_GetIPD(unsigned short timeOut);
 
-void BC20_SendMes(char *mes);
+void BC20_SendMes(int id,char *mes);
 
 void BC20_SendGPS(void);
 
@@ -52,4 +52,6 @@ void NMEA_BDS_GPRMC_Analysis(gps_msg *gpsmsg, uint8_t *buf);
 void BC20_RESTART(void);
 
 void BC20_RESET(void);
+
+void BC20_MQTT_CHECK(void);
 #endif

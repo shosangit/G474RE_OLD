@@ -8,6 +8,7 @@
 "g474re_old\dma.o"
 "g474re_old\i2c.o"
 "g474re_old\usart.o"
+"g474re_old\tim.o"
 "g474re_old\stm32g4xx_it.o"
 "g474re_old\stm32g4xx_hal_msp.o"
 "g474re_old\stm32g4xx_hal_crc.o"

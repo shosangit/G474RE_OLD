@@ -32,12 +32,15 @@ g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i2c.h
 g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i2c_ex.h
 g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr.h
 g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr_ex.h
+g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim.h
+g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h
 g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h
 g474re_old\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h
 g474re_old\main.o: ../Core/Inc/crc.h
 g474re_old\main.o: ../Core/Inc/dma.h
 g474re_old\main.o: ../Core/Inc/i2c.h
 g474re_old\main.o: ../Core/Inc/usart.h
+g474re_old\main.o: ../Core/Inc/tim.h
 g474re_old\main.o: ../Core/Inc/gpio.h
 g474re_old\main.o: ../X-CUBE-AI/App/app_x-cube-ai.h
 g474re_old\main.o: ../Middlewares/ST/AI/Inc/ai_platform.h

@@ -1,6 +1,6 @@
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 /**
   ******************************************************************************
@@ -49,21 +49,21 @@
   *
   ******************************************************************************
   */
- /*
-  * Description
-  *   v1.0 - Minimum template to show how to use the Embedded Client API
-  *          model. Only one input and one output is supported. All
-  *          memory resources are allocated statically (AI_NETWORK_XX, defines
-  *          are used).
-  *          Re-target of the printf function is out-of-scope.
-  *
-  *   For more information, see the embeded documentation:
-  *
-  *       [1] %X_CUBE_AI_DIR%/Documentation/index.html
-  *
-  *   X_CUBE_AI_DIR indicates the location where the X-CUBE-AI pack is installed
-  *   typical : C:\Users\<user_name>\STM32Cube\Repository\STMicroelectronics\X-CUBE-AI\6.0.0
-  */
+/*
+ * Description
+ *   v1.0 - Minimum template to show how to use the Embedded Client API
+ *          model. Only one input and one output is supported. All
+ *          memory resources are allocated statically (AI_NETWORK_XX, defines
+ *          are used).
+ *          Re-target of the printf function is out-of-scope.
+ *
+ *   For more information, see the embeded documentation:
+ *
+ *       [1] %X_CUBE_AI_DIR%/Documentation/index.html
+ *
+ *   X_CUBE_AI_DIR indicates the location where the X-CUBE-AI pack is installed
+ *   typical : C:\Users\<user_name>\STM32Cube\Repository\STMicroelectronics\X-CUBE-AI\6.0.0
+ */
 /* Includes ------------------------------------------------------------------*/
 /* System headers */
 #include <stdint.h>
@@ -83,24 +83,25 @@
 #include "ai_platform.h"
 #include "main.h"
 #include "BC20.h"
-float in_data[AI_NETWORK2_IN_1_SIZE_BYTES];
-float out_data[AI_NETWORK2_OUT_1_SIZE_BYTES];
+
+float ai_out[2];
+float in_data[12];
+float out_data[2];
 float aiwindow_Ax[2000];
 float aiwindow_Ay[2000];
 float aiwindow_Az[2000];
 float aiwindow_APitch[2000];
-
 float aiwindow_Gx[2000];
 float aiwindow_Gy[2000];
 float aiwindow_Gz[2000];
 float aiwindow_GPitch[2000];
-
-uint8_t ti;
-float b[2];
-float JV = 0.9;
+uint8_t ti=0;
+int text=2000;
+float JV = 0.93;
 float max_Ax, max_Ay, max_Az, max_Apitch, var_Apitch, mean_Apitch;
 float max_Gx, max_Gy, max_Gz, max_Gpitch, var_Gpitch, mean_Gpitch;
 extern MPU6050_t MPU6050;
+extern uint8_t BC20flag;
 /* USER CODE END includes */
 /* Global AI objects */
 static ai_handle network2 = AI_HANDLE_NULL;
@@ -130,7 +131,7 @@ static ai_u8 out_data_s[AI_NETWORK2_OUT_1_SIZE_BYTES];
 
 static void ai_log_err(const ai_error err, const char *fct)
 {
-  /* USER CODE BEGIN log */
+    /* USER CODE BEGIN log */
     if (fct)
         printf("TEMPLATE - Error (%s) - type=0x%02x code=0x%02x\r\n", fct,
                err.type, err.code);
@@ -138,61 +139,61 @@ static void ai_log_err(const ai_error err, const char *fct)
         printf("TEMPLATE - Error - type=0x%02x code=0x%02x\r\n", err.type, err.code);
 
     do {} while (1);
-  /* USER CODE END log */
+    /* USER CODE END log */
 }
 
 static int ai_boostrap(ai_handle w_addr, ai_handle act_addr)
 {
-  ai_error err;
+    ai_error err;
 
-  /* 1 - Create an instance of the model */
-  err = ai_network2_create(&network2, AI_NETWORK2_DATA_CONFIG);
-  if (err.type != AI_ERROR_NONE) {
-    ai_log_err(err, "ai_network2_create");
-    return -1;
-  }
-
-  /* 2 - Initialize the instance */
-  const ai_network_params params = AI_NETWORK_PARAMS_INIT(
-      AI_NETWORK2_DATA_WEIGHTS(w_addr),
-      AI_NETWORK2_DATA_ACTIVATIONS(act_addr) );
-
-  if (!ai_network2_init(network2, &params)) {
-      err = ai_network2_get_error(network2);
-      ai_log_err(err, "ai_network2_init");
-      return -1;
+    /* 1 - Create an instance of the model */
+    err = ai_network2_create(&network2, AI_NETWORK2_DATA_CONFIG);
+    if (err.type != AI_ERROR_NONE) {
+        ai_log_err(err, "ai_network2_create");
+        return -1;
     }
 
-  /* 3 - Retrieve the network info of the created instance */
-  if (!ai_network2_get_info(network2, &network2_info)) {
-    err = ai_network2_get_error(network2);
-    ai_log_err(err, "ai_network2_get_error");
-    ai_network2_destroy(network2);
-    network2 = AI_HANDLE_NULL;
-    return -3;
-  }
+    /* 2 - Initialize the instance */
+    const ai_network_params params = AI_NETWORK_PARAMS_INIT(
+                                         AI_NETWORK2_DATA_WEIGHTS(w_addr),
+                                         AI_NETWORK2_DATA_ACTIVATIONS(act_addr) );
 
-  return 0;
+    if (!ai_network2_init(network2, &params)) {
+        err = ai_network2_get_error(network2);
+        ai_log_err(err, "ai_network2_init");
+        return -1;
+    }
+
+    /* 3 - Retrieve the network info of the created instance */
+    if (!ai_network2_get_info(network2, &network2_info)) {
+        err = ai_network2_get_error(network2);
+        ai_log_err(err, "ai_network2_get_error");
+        ai_network2_destroy(network2);
+        network2 = AI_HANDLE_NULL;
+        return -3;
+    }
+
+    return 0;
 }
 
 static int ai_run(void *data_in, void *data_out)
 {
-  ai_i32 batch;
+    ai_i32 batch;
 
-  ai_buffer *ai_input = network2_info.inputs;
-  ai_buffer *ai_output = network2_info.outputs;
+    ai_buffer *ai_input = network2_info.inputs;
+    ai_buffer *ai_output = network2_info.outputs;
 
-  ai_input[0].data = AI_HANDLE_PTR(data_in);
-  ai_output[0].data = AI_HANDLE_PTR(data_out);
+    ai_input[0].data = AI_HANDLE_PTR(data_in);
+    ai_output[0].data = AI_HANDLE_PTR(data_out);
 
-  batch = ai_network2_run(network2, ai_input, ai_output);
-  if (batch != 1) {
-    ai_log_err(ai_network2_get_error(network2),
-        "ai_network2_run");
-    return -1;
-  }
+    batch = ai_network2_run(network2, ai_input, ai_output);
+    if (batch != 1) {
+        ai_log_err(ai_network2_get_error(network2),
+                   "ai_network2_run");
+        return -1;
+    }
 
-  return 0;
+    return 0;
 }
 
 /* USER CODE BEGIN 2 */
@@ -268,97 +269,71 @@ void MX_X_CUBE_AI_Init(void)
 void MX_X_CUBE_AI_Process(void)
 {
     /* USER CODE BEGIN 6 */
-    if(ti<=6) {
-        ti++;
 
-        MPU6050_Read_All(&hi2c2, &MPU6050);
-        int16_t i = 1999;
+    mean_Apitch = mean(aiwindow_APitch);
+    max_Ax = max(aiwindow_Ax);
+    max_Ay = max(aiwindow_Ay);
+    max_Az = max(aiwindow_Az);
+    max_Apitch = max(aiwindow_APitch);
+    var_Apitch = var(mean_Apitch, aiwindow_APitch);
+    mean_Gpitch = mean(aiwindow_GPitch);
+    max_Gx = max(aiwindow_Gx);
+    max_Gy = max(aiwindow_Gy);
+    max_Gz = max(aiwindow_Gz);
+    max_Gpitch = max(aiwindow_GPitch);
+    var_Gpitch = var(mean_Gpitch, aiwindow_GPitch);
 
-        while (i > 0)
+    in_data[0] = max_Ax;
+    in_data[1] = max_Ay;
+    in_data[2] = max_Az;
+    in_data[3] = max_Apitch;
+    in_data[4] = var_Apitch;
+    in_data[5] = mean_Apitch;
+    in_data[6] = max_Gx;
+    in_data[7] = max_Gy;
+    in_data[8] = max_Gz;
+    in_data[9] = max_Gpitch;
+    in_data[10] = var_Gpitch;
+    in_data[11] = mean_Gpitch;
+
+    /* 1 - Create the AI buffer IO handlers */
+    ai_buffer ai_input[AI_NETWORK2_IN_NUM] = AI_NETWORK2_IN;
+    ai_buffer ai_output[AI_NETWORK2_OUT_NUM] = AI_NETWORK2_OUT;
+
+    /* 2 - Initialize input/output buffer handlers */
+    ai_input[0].n_batches = 1;
+    ai_input[0].data = AI_HANDLE_PTR(in_data);
+    ai_output[0].n_batches = 1;
+    ai_output[0].data = AI_HANDLE_PTR(out_data);
+
+    /* 3 - Perform the inference */
+    ai_network2_run(network2, &ai_input[0], &ai_output[0]);
+
+    /* Output results *********************************************************/
+    //    printf("Inference output..\n");
+
+    ai_out[0] = ((float *)out_data)[0];
+    ai_out[1] = ((float *)out_data)[1];
+
+    HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+    if (ai_out[1] >= JV)
+    {
+        printf("視給ㄐ");
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+        HAL_Delay(3000);
+        memset(aiwindow_APitch, 0, 2000);
+        memset(aiwindow_GPitch, 0, 2000);
+        memset(aiwindow_Ax, 0, 2000);
+        memset(aiwindow_Ay, 0, 2000);
+        memset(aiwindow_Az, 0, 2000);
+        memset(aiwindow_Gx, 0, 2000);
+        memset(aiwindow_Gy, 0, 2000);
+        memset(aiwindow_Gz, 0, 2000);
+        if(BC20flag == 1)
         {
-            aiwindow_Ax[i] = aiwindow_Ax[i - 1];
-            aiwindow_Ay[i] = aiwindow_Ay[i - 1];
-            aiwindow_Az[i] = aiwindow_Az[i - 1];
-            aiwindow_APitch[i] = aiwindow_APitch[i - 1];
-
-            aiwindow_Gx[i] = aiwindow_Gx[i - 1];
-            aiwindow_Gy[i] = aiwindow_Gy[i - 1];
-            aiwindow_Gz[i] = aiwindow_Gz[i - 1];
-            aiwindow_GPitch[i] = aiwindow_GPitch[i - 1];
-
-            i--;
-        }
-        aiwindow_Ax[0] = MPU6050.Ax;
-        aiwindow_Ay[0] = MPU6050.Ay;
-        aiwindow_Az[0] = MPU6050.Az;
-        aiwindow_APitch[0] = atan2(aiwindow_Ax[0], aiwindow_Az[0]);
-
-        aiwindow_Gx[0] = MPU6050.Gx;
-        aiwindow_Gy[0] = MPU6050.Gy;
-        aiwindow_Gz[0] = MPU6050.Gz;
-        aiwindow_GPitch[0] = atan2(aiwindow_Gx[0], aiwindow_Gz[0]);
-
-
-        mean_Apitch = mean(aiwindow_APitch);
-        max_Ax = max(aiwindow_Ax);
-        max_Ay = max(aiwindow_Ay);
-        max_Az = max(aiwindow_Az);
-        max_Apitch = max(aiwindow_APitch);
-        var_Apitch = var(mean_Apitch, aiwindow_APitch);
-        mean_Gpitch = mean(aiwindow_GPitch);
-        max_Gx = max(aiwindow_Gx);
-        max_Gy = max(aiwindow_Gy);
-        max_Gz = max(aiwindow_Gz);
-        max_Gpitch = max(aiwindow_GPitch);
-        var_Gpitch = var(mean_Gpitch, aiwindow_GPitch);
-
-        in_data[0] = max_Ax;
-        in_data[1] = max_Ay;
-        in_data[2] = max_Az;
-        in_data[3] = max_Apitch;
-        in_data[4] = var_Apitch;
-        in_data[5] = mean_Apitch;
-        in_data[6] = max_Gx;
-        in_data[7] = max_Gy;
-        in_data[8] = max_Gz;
-        in_data[9] = max_Gpitch;
-        in_data[10] = var_Gpitch;
-        in_data[11] = mean_Gpitch;
-
-        /* 1 - Create the AI buffer IO handlers */
-        ai_buffer ai_input[AI_NETWORK2_IN_NUM] = AI_NETWORK2_IN;
-        ai_buffer ai_output[AI_NETWORK2_OUT_NUM] = AI_NETWORK2_OUT;
-
-        /* 2 - Initialize input/output buffer handlers */
-        ai_input[0].n_batches = 1;
-        ai_input[0].data = AI_HANDLE_PTR(in_data);
-        ai_output[0].n_batches = 1;
-        ai_output[0].data = AI_HANDLE_PTR(out_data);
-
-        /* 3 - Perform the inference */
-        ai_network2_run(network2, &ai_input[0], &ai_output[0]);
-
-        /* Output results *********************************************************/
-        //    printf("Inference output..\n");
-
-        b[0] = ((float *)out_data)[0];
-        b[1] = ((float *)out_data)[1];
-
-        printf("淏都袨怓ぁ饜僅:%f,視給袨怓ぁ饜僅:%f\r\n", b[0],b[1]);
-
-        if (b[1] >= JV)
-        {
-            printf("視給ㄐ");
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
-            HAL_Delay(3000);
-            
-//        BC20_SendMes("fall");
+            BC20_SendMes(123,"Fall");
         }
     }
-    else {
-        ti=0;
-        return;
-    };
     /* USER CODE END 6 */
 }
 #ifdef __cplusplus

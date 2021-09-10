@@ -1,6 +1,6 @@
 Neural Network Tools for STM32AI v1.5.1 (STM.ai v7.0.0-RC8)
-Created date          : 2021-09-06 12:57:15
-Parameters            : generate --name network2 -m D:/Project/Embedded competition/model/model.h5 --type keras --compression 8 --verbosity 1 --workspace C:\Users\15755\AppData\Local\Temp\mxAI_workspace1892997782065005232210142028841745 --output C:\Users\15755\.stm32cubemx
+Created date          : 2021-09-10 14:17:41
+Parameters            : generate --name network2 -m D:/Project/Embedded competition/model/model.h5 --type keras --compression 8 --verbosity 1 --workspace C:\Users\15755\AppData\Local\Temp\mxAI_workspace216081855419007510281672143630357 --output C:\Users\15755\.stm32cubemx
 
 Exec/report summary (generate)
 ------------------------------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ model file            : D:\Project\Embedded competition\model\model.h5
 type                  : keras
 c_name                : network2
 compression           : 8
-workspace dir         : C:\Users\15755\AppData\Local\Temp\mxAI_workspace1892997782065005232210142028841745
+workspace dir         : C:\Users\15755\AppData\Local\Temp\mxAI_workspace216081855419007510281672143630357
 output dir            : C:\Users\15755\.stm32cubemx
 
 model_name            : model

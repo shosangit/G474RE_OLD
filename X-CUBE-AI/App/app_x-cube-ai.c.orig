@@ -83,24 +83,25 @@
 #include "ai_platform.h"
 #include "main.h"
 #include "BC20.h"
-float in_data[AI_NETWORK2_IN_1_SIZE_BYTES];
-float out_data[AI_NETWORK2_OUT_1_SIZE_BYTES];
+
+float ai_out[2];
+float in_data[12];
+float out_data[2];
 float aiwindow_Ax[2000];
 float aiwindow_Ay[2000];
 float aiwindow_Az[2000];
 float aiwindow_APitch[2000];
-
 float aiwindow_Gx[2000];
 float aiwindow_Gy[2000];
 float aiwindow_Gz[2000];
 float aiwindow_GPitch[2000];
-
-uint8_t ti;
-float b[2];
-float JV = 0.9;
+uint8_t ti=0;
+int text=2000;
+float JV = 0.93;
 float max_Ax, max_Ay, max_Az, max_Apitch, var_Apitch, mean_Apitch;
 float max_Gx, max_Gy, max_Gz, max_Gpitch, var_Gpitch, mean_Gpitch;
 extern MPU6050_t MPU6050;
+extern uint8_t BC20flag;
 /* USER CODE END includes */
 /* Global AI objects */
 static ai_handle network2 = AI_HANDLE_NULL;
@@ -268,96 +269,71 @@ void MX_X_CUBE_AI_Init(void)
 void MX_X_CUBE_AI_Process(void)
 {
     /* USER CODE BEGIN 6 */
-    if(ti<=6) {
-        ti++;
 
-        MPU6050_Read_All(&hi2c2, &MPU6050);
-        int16_t i = 1999;
+    mean_Apitch = mean(aiwindow_APitch);
+    max_Ax = max(aiwindow_Ax);
+    max_Ay = max(aiwindow_Ay);
+    max_Az = max(aiwindow_Az);
+    max_Apitch = max(aiwindow_APitch);
+    var_Apitch = var(mean_Apitch, aiwindow_APitch);
+    mean_Gpitch = mean(aiwindow_GPitch);
+    max_Gx = max(aiwindow_Gx);
+    max_Gy = max(aiwindow_Gy);
+    max_Gz = max(aiwindow_Gz);
+    max_Gpitch = max(aiwindow_GPitch);
+    var_Gpitch = var(mean_Gpitch, aiwindow_GPitch);
 
-        while (i > 0)
-        {
-            aiwindow_Ax[i] = aiwindow_Ax[i - 1];
-            aiwindow_Ay[i] = aiwindow_Ay[i - 1];
-            aiwindow_Az[i] = aiwindow_Az[i - 1];
-            aiwindow_APitch[i] = aiwindow_APitch[i - 1];
+    in_data[0] = max_Ax;
+    in_data[1] = max_Ay;
+    in_data[2] = max_Az;
+    in_data[3] = max_Apitch;
+    in_data[4] = var_Apitch;
+    in_data[5] = mean_Apitch;
+    in_data[6] = max_Gx;
+    in_data[7] = max_Gy;
+    in_data[8] = max_Gz;
+    in_data[9] = max_Gpitch;
+    in_data[10] = var_Gpitch;
+    in_data[11] = mean_Gpitch;
 
-            aiwindow_Gx[i] = aiwindow_Gx[i - 1];
-            aiwindow_Gy[i] = aiwindow_Gy[i - 1];
-            aiwindow_Gz[i] = aiwindow_Gz[i - 1];
-            aiwindow_GPitch[i] = aiwindow_GPitch[i - 1];
+    /* 1 - Create the AI buffer IO handlers */
+    ai_buffer ai_input[AI_NETWORK2_IN_NUM] = AI_NETWORK2_IN;
+    ai_buffer ai_output[AI_NETWORK2_OUT_NUM] = AI_NETWORK2_OUT;
 
-            i--;
-        }
-        aiwindow_Ax[0] = MPU6050.Ax;
-        aiwindow_Ay[0] = MPU6050.Ay;
-        aiwindow_Az[0] = MPU6050.Az;
-        aiwindow_APitch[0] = atan2(aiwindow_Ax[0], aiwindow_Az[0]);
+    /* 2 - Initialize input/output buffer handlers */
+    ai_input[0].n_batches = 1;
+    ai_input[0].data = AI_HANDLE_PTR(in_data);
+    ai_output[0].n_batches = 1;
+    ai_output[0].data = AI_HANDLE_PTR(out_data);
 
-        aiwindow_Gx[0] = MPU6050.Gx;
-        aiwindow_Gy[0] = MPU6050.Gy;
-        aiwindow_Gz[0] = MPU6050.Gz;
-        aiwindow_GPitch[0] = atan2(aiwindow_Gx[0], aiwindow_Gz[0]);
+    /* 3 - Perform the inference */
+    ai_network2_run(network2, &ai_input[0], &ai_output[0]);
 
+    /* Output results *********************************************************/
+    //    printf("Inference output..\n");
 
-        mean_Apitch = mean(aiwindow_APitch);
-        max_Ax = max(aiwindow_Ax);
-        max_Ay = max(aiwindow_Ay);
-        max_Az = max(aiwindow_Az);
-        max_Apitch = max(aiwindow_APitch);
-        var_Apitch = var(mean_Apitch, aiwindow_APitch);
-        mean_Gpitch = mean(aiwindow_GPitch);
-        max_Gx = max(aiwindow_Gx);
-        max_Gy = max(aiwindow_Gy);
-        max_Gz = max(aiwindow_Gz);
-        max_Gpitch = max(aiwindow_GPitch);
-        var_Gpitch = var(mean_Gpitch, aiwindow_GPitch);
+    ai_out[0] = ((float *)out_data)[0];
+    ai_out[1] = ((float *)out_data)[1];
 
-        in_data[0] = max_Ax;
-        in_data[1] = max_Ay;
-        in_data[2] = max_Az;
-        in_data[3] = max_Apitch;
-        in_data[4] = var_Apitch;
-        in_data[5] = mean_Apitch;
-        in_data[6] = max_Gx;
-        in_data[7] = max_Gy;
-        in_data[8] = max_Gz;
-        in_data[9] = max_Gpitch;
-        in_data[10] = var_Gpitch;
-        in_data[11] = mean_Gpitch;
-
-        /* 1 - Create the AI buffer IO handlers */
-        ai_buffer ai_input[AI_NETWORK2_IN_NUM] = AI_NETWORK2_IN;
-        ai_buffer ai_output[AI_NETWORK2_OUT_NUM] = AI_NETWORK2_OUT;
-
-        /* 2 - Initialize input/output buffer handlers */
-        ai_input[0].n_batches = 1;
-        ai_input[0].data = AI_HANDLE_PTR(in_data);
-        ai_output[0].n_batches = 1;
-        ai_output[0].data = AI_HANDLE_PTR(out_data);
-
-        /* 3 - Perform the inference */
-        ai_network2_run(network2, &ai_input[0], &ai_output[0]);
-
-        /* Output results *********************************************************/
-        //    printf("Inference output..\n");
-
-        b[0] = ((float *)out_data)[0];
-        b[1] = ((float *)out_data)[1];
-
-        printf("淏都袨怓ぁ饜僅:%f,視給袨怓ぁ饜僅:%f\r\n", b[0],b[1]);
-
-        if (b[1] >= JV)
-        {
-            printf("視給ㄐ");
-            HAL_Delay(3000);
+    HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+    if (ai_out[1] >= JV)
+    {
+        printf("視給ㄐ");
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
-//        BC20_SendMes("fall");
+        HAL_Delay(3000);
+        memset(aiwindow_APitch, 0, 2000);
+        memset(aiwindow_GPitch, 0, 2000);
+        memset(aiwindow_Ax, 0, 2000);
+        memset(aiwindow_Ay, 0, 2000);
+        memset(aiwindow_Az, 0, 2000);
+        memset(aiwindow_Gx, 0, 2000);
+        memset(aiwindow_Gy, 0, 2000);
+        memset(aiwindow_Gz, 0, 2000);
+        if(BC20flag == 1)
+        {
+            BC20_SendMes(123,"Fall");
         }
     }
-    else {
-        ti=0;
-        return;
-    };
     /* USER CODE END 6 */
 }
 #ifdef __cplusplus

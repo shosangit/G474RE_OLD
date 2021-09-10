@@ -10,8 +10,8 @@
 #define BC20_CONNECT_INFO "AT+QMTCONN=0,\"wuhu1\",\"451120\",\"version=2018-10-31&res=products%2F451120%2Fdevices%2Fwuhu1&et=1703433600&method=md5&sign=LSVisLEm3%2F03R6bkkmYe%2FA%3D%3D\"\r\n" //连接MQTT服务器
 
 extern uint8_t usart1_rx_flag;
-extern uint8_t usart1_dma_buffer[512];
-extern uint8_t usart1_rx_buffer[1024];
+extern uint8_t usart1_dma_buffer[1024];
+extern uint8_t usart1_rx_buffer[2048];
 extern uint16_t usart1_rx_len;
 extern uint16_t usart1_dma_len;
 extern uint8_t BC20flag;
@@ -123,8 +123,8 @@ void NMEA_BDS_GPRMC_Analysis(gps_msg *gpsmsg, uint8_t *buf)
     uint8_t posx;
     uint32_t temp;
     float rs;
-    p4 = (uint8_t *)strstr((const char *)buf, "$GNGLL"); //"$GNGLL",经常有&和GPRMC分开的情况,故只判断GPRMC.
-    posx = NMEA_Comma_Pos(p4, 1);                        //得到纬度
+    p4 = (uint8_t *)strstr((const char *)buf, "$GNGGA"); //"$GNGGA",经常有&和GPRMC分开的情况,故只判断GPRMC.
+    posx = NMEA_Comma_Pos(p4, 2);                        //得到纬度
     if (posx != 0XFF)
     {
         temp = NMEA_Str2num(p4 + posx, &dx);
@@ -132,10 +132,10 @@ void NMEA_BDS_GPRMC_Analysis(gps_msg *gpsmsg, uint8_t *buf)
         rs = temp % NMEA_Pow(10, dx + 2);                                                               //得到'
         gpsmsg->latitude_bd = gpsmsg->latitude_bd * NMEA_Pow(10, 5) + (rs * NMEA_Pow(10, 5 - dx)) / 60; //转换为°
     }
-    posx = NMEA_Comma_Pos(p4, 2); //南纬还是北纬
+    posx = NMEA_Comma_Pos(p4, 3); //南纬还是北纬
     if (posx != 0XFF)
         gpsmsg->nshemi_bd = *(p4 + posx);
-    posx = NMEA_Comma_Pos(p4, 3); //得到经度
+    posx = NMEA_Comma_Pos(p4, 4); //得到经度
     if (posx != 0XFF)
     {
         temp = NMEA_Str2num(p4 + posx, &dx);
@@ -143,7 +143,7 @@ void NMEA_BDS_GPRMC_Analysis(gps_msg *gpsmsg, uint8_t *buf)
         rs = temp % NMEA_Pow(10, dx + 2);                                                                 //得到'
         gpsmsg->longitude_bd = gpsmsg->longitude_bd * NMEA_Pow(10, 5) + (rs * NMEA_Pow(10, 5 - dx)) / 60; //转换为°
     }
-    posx = NMEA_Comma_Pos(p4, 4); //东经还是西经
+    posx = NMEA_Comma_Pos(p4, 5); //东经还是西经
     if (posx != 0XFF)
         gpsmsg->ewhemi_bd = *(p4 + posx);
 }
@@ -185,6 +185,7 @@ int BC20_SendCmd(char *cmd, char *reply, int wait)
             printf("CMD->%s\r\n+++ERROR\r\n", usart1_rx_buffer);
             usart1_rx_flag = 0;
             BC20_Clear();
+						BC20_Init();
             return 0;
         }
         else
@@ -198,15 +199,15 @@ int BC20_SendCmd(char *cmd, char *reply, int wait)
     {   //未进中断
         printf("\r\n+++null\r\n");
         usart1_rx_flag = 0;
-        return 0;
+        return -1;
     };
 }
 
-void BC20_SendMes(char *mes)
+void BC20_SendMes(int id,char *mes)
 {
 
     char mesbody[200];
-    sprintf(mesbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": 123,\"dp\": {\"state\": [{\"v\": \"%s\",}]}}\r\n", *(&mes));
+    sprintf(mesbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": %d,\"dp\": {\"state\": [{\"v\": \"%s\",}]}}\r\n",id,*(&mes));
 
     HAL_UART_Receive_DMA(&huart1, usart1_rx_buffer, sizeof(usart1_rx_buffer));
     if (HAL_UART_Transmit(&huart1, (unsigned char *)mesbody, (uint8_t)strlen(mesbody), 500) == HAL_OK)
@@ -218,9 +219,10 @@ void BC20_SendGPS(void)
 
     BC20_Clear();
     char gpsbody[200];
-
-    if (BC20_SendCmd("AT+CSQ\r\n", "99", 2000) != 1)
+    int p=BC20_SendCmd("AT+CSQ\r\n", "99", 2000);
+    if ( p != -1 && p != 1)
     {
+        BC20_Clear();
 
         if (BC20_GNSS_GET() == 0)
             return;
@@ -229,7 +231,7 @@ void BC20_SendGPS(void)
 
         BC20_GPS_Read_Data();
         printf("%f,%f", BC20_GPS_Data.Longitude, BC20_GPS_Data.Latitude);
-        sprintf(gpsbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": 123,\"dp\":{\"location\":[{\"v\":{\"lon\":%f,\"lat\":%f}}]}}\r\n", BC20_GPS_Data.Longitude, BC20_GPS_Data.Latitude);
+        sprintf(gpsbody, "AT+QMTPUB=0,0,0,0,\"$sys/451120/wuhu1/dp/post/json\",\"{\"id\": 124,\"dp\":{\"location\":[{\"v\":{\"lon\":%f,\"lat\":%f}}]}}\r\n", BC20_GPS_Data.Longitude, BC20_GPS_Data.Latitude);
 
         BC20_Clear();
     }
@@ -240,21 +242,25 @@ void BC20_SendGPS(void)
 unsigned char BC20_GNSS_GET(void) //获取gps数据
 {
 
-    char cmd1[] = {"AT+QGNSSRD=\"NMEA/GLL\"\r\n"};
+    char cmd1[] = {"AT+QGNSSRD=\"NMEA/GGA\"\r\n"};
     BC20_Clear();
 
     if (BC20_SendCmd("AT+QGNSSC?\r\n", "1", 1000) != 1)
     {
-        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 2000))
-            ;
+        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 2000));
     }
     HAL_Delay(500);
-    if (BC20_SendCmd("AT+QGNSSRD?\r\n", "99,99", 2000) != 1)
-        return 0;
+
     HAL_UART_Receive_DMA(&huart1, usart1_rx_buffer, sizeof(usart1_rx_buffer));
 
     HAL_UART_Transmit(&huart1, (uint8_t *)cmd1, strlen(cmd1), 0xffff);
+    HAL_Delay(100);
+    if(strstr((char *)usart1_rx_buffer, "99")) {
+        usart1_rx_flag = 0;
+        return 0;
+    }
     printf("GPS GET OVER！\r\n");
+    usart1_rx_flag = 0;
     return *usart1_rx_buffer;
 }
 
@@ -262,15 +268,15 @@ void BC20_GNSS_INIT(void) //初始化gps
 {
     BC20_Clear();
 
-    if (!BC20_SendCmd("AT+QGNSSAGPS?\r\n", "1", 500)) //判断是否开启了AGPS，如果没开启则开启
+    if (!BC20_SendCmd("AT+QGNSSAGPS?\r\n", "1", 200)) //判断是否开启了AGPS，如果没开启则开启
     {
-        while (!BC20_SendCmd("AT+QGNSSAGPS=1\r\n", "OK", 250)) //开启AGPS功能
+        while (!BC20_SendCmd("AT+QGNSSAGPS=1\r\n", "OK", 200)) //开启AGPS功能
             printf("已经开启AGPS功能！\r\n");
     }
 
-    if (!BC20_SendCmd("AT+QGNSSC?\r\n", "1", 250)) //判断是否开启了gnss，如果没开启则开启
+    if (!BC20_SendCmd("AT+QGNSSC?\r\n", "1", 200)) //判断是否开启了gnss，如果没开启则开启
     {
-        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 500))
+        while (!BC20_SendCmd("AT+QGNSSC=1\r\n", "OK", 200))
             printf("GPS初始化完毕！\r\n");
     }
 }
@@ -288,18 +294,18 @@ void BC20_RESET(void)
     HAL_Delay(40);
     printf("Reset Over!\r\n");
 }
-void BC20_Init(void) //初始化BC20模块
+/**
+  * @brief  初始化BC20
+  * @param  无
+  * @retval  无
+  */
+void BC20_Init(void)
 {
-    printf("BC20初始化中...");
+    printf("BC20初始化中...\r\n");
 
-	    printf("BC20开机...\r\n");
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-    HAL_Delay(600);
-    printf("BC20开机完毕\r\n");
-	
-    BC20_RESET();
+    BC20_RESTART();
 
-    while (!BC20_SendCmd("AT\r\n", "OK", 200))
+    while (!BC20_SendCmd("AT\r\n", "OK", 150))
     {
         wnb++;
         if (wnb >= 3)
@@ -314,45 +320,53 @@ void BC20_Init(void) //初始化BC20模块
     printf("AT+CPSMS Over!\r\n");
     HAL_Delay(50);
 
-    while (!BC20_SendCmd("AT+QMTCFG=\"version\",0,4\r\n", "OK", 200)) //设置mqtt版本为3.1.1
+    if(BC20_SendCmd("AT+CFUN?\r\n", "1", 150)!=1)
+    {
+        BC20_SendCmd("AT+CFUN=1\r\n", "1", 150);
+    }
+    HAL_Delay(50);
+
+    BC20_SendCmd("AT+QMTCLOSE=0\r\n", "1", 150);
+
+    while (!BC20_SendCmd("AT+QMTCFG=\"version\",0,4\r\n", "OK", 150)) //设置mqtt版本为3.1.1
         HAL_Delay(50);
     printf("Version OVER!\r\n");
     HAL_Delay(50);
 
-    while (!BC20_SendCmd(BC20_MQTT_INFO, "0,0", 3000))
+    while (!BC20_SendCmd(BC20_MQTT_INFO, "0,0", 2000))
     {
         wnb++;
-        if (wnb >= 8)
+        if (wnb >= 10)
         {
             wnb = 0;
-            BC20_Init();
+            return ;
         }
     }
 
     printf("MQTT OVER!\r\n");
 
-    while (!BC20_SendCmd(BC20_CONNECT_INFO, "0,0,0", 2000))
+    while (!BC20_SendCmd(BC20_CONNECT_INFO, "0,0,0", 1500))
     {
         wnb = 0;
         wnb++;
         if (wnb >= 5)
         {
             wnb = 0;
-            BC20_Init();
+            return ;
         }
     }
 
     printf("CONNECT OVER!\r\n");
-
-    while (!BC20_SendCmd("AT+CEREG=2\r\n", "OK", 200)) //设置mqtt版本为3.1.1
-        HAL_Delay(50);
-    printf("Version OVER!\r\n");
-    HAL_Delay(50);
-
-    while (!BC20_SendCmd("AT+CEREG?\r\n", "OK", 200)) //设置mqtt版本为3.1.1
-        HAL_Delay(50);
-    printf("Version OVER!\r\n");
-    HAL_Delay(50);
-
     BC20flag = 1;
+}
+
+void BC20_MQTT_CHECK(void) {
+
+    if(BC20_SendCmd("AT+CGATT?\r\n","1",500)==1)
+        return ;
+    else {
+        BC20_Init();
+        return ;
+    }
+
 }
