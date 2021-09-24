@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;                         ../Middlewares/ST/AI/Inc;                         ../X-CUBE-AI/App;                         ../Drivers/STM32G4xx_HAL_Driver/Inc;                         ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;                         ../Drivers/CMSIS/Device/ST/STM32G4xx/Include;                         ../Drivers/CMSIS/Include;                        ../X-CUBE-AI</IncludePath>
+              <IncludePath>../Core/Inc;                          ../Middlewares/ST/AI/Inc;                          ../X-CUBE-AI/App;                          ../Drivers/STM32G4xx_HAL_Driver/Inc;                          ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;                          ../Drivers/CMSIS/Device/ST/STM32G4xx/Include;                          ../Drivers/CMSIS/Include;                         ../X-CUBE-AI</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>

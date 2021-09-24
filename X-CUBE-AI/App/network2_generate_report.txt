@@ -1,133 +1,135 @@
 Neural Network Tools for STM32AI v1.5.1 (STM.ai v7.0.0-RC8)
-Created date          : 2021-09-10 14:17:41
-Parameters            : generate --name network2 -m D:/Project/Embedded competition/model/model.h5 --type keras --compression 8 --verbosity 1 --workspace C:\Users\15755\AppData\Local\Temp\mxAI_workspace216081855419007510281672143630357 --output C:\Users\15755\.stm32cubemx
+Created date          : 2021-09-24 13:49:31
+Parameters            : generate --name network2 -m D:/Project/Embedded competition/model/uint8_quant_FDMLPmodel.tflite --type tflite --compression 1 --verbosity 1 --workspace C:\Users\15755\AppData\Local\Temp\mxAI_workspace10830471169020014992698300001970547 --output C:\Users\15755\.stm32cubemx
 
 Exec/report summary (generate)
 ------------------------------------------------------------------------------------------------------------------------
-model file            : D:\Project\Embedded competition\model\model.h5
-type                  : keras
+model file            : D:\Project\Embedded competition\model\uint8_quant_FDMLPmodel.tflite
+type                  : tflite
 c_name                : network2
-compression           : 8
-workspace dir         : C:\Users\15755\AppData\Local\Temp\mxAI_workspace216081855419007510281672143630357
+workspace dir         : C:\Users\15755\AppData\Local\Temp\mxAI_workspace10830471169020014992698300001970547
 output dir            : C:\Users\15755\.stm32cubemx
 
-model_name            : model
-model_hash            : 3130e851ec0996f7c20282dcf608d8de
-input                 : input_0 [12 items, 48 B, ai_float, float, (1, 1, 1, 12)]
-inputs (total)        : 48 B
-output                : dense_8_nl [2 items, 8 B, ai_float, float, (1, 1, 1, 2)]
-outputs (total)       : 8 B
-params #              : 4,674 items (18.26 KiB)
-macc                  : 5,654
-weights (ro)          : 3,208 B (3.13 KiB) / -15,488(-82.8%) vs original model
-activations (rw)      : 384 B (384 B) 
-ram (total)           : 440 B (440 B) = 384 + 48 + 8
+model_name            : uint8_quant_FDMLPmodel
+model_hash            : c8c027571ecb82123a1c30381a4e2cae
+input                 : dense_input [12 items, 12 B, ai_i8, scale=0.003921452909708023, zero_point=-128, (1, 1, 1, 12)]
+inputs (total)        : 12 B
+output                : nl_6 [2 items, 2 B, ai_i8, scale=0.00390625, zero_point=-128, (1, 1, 1, 2)]
+outputs (total)       : 2 B
+params #              : 4,674 items (4.95 KiB)
+macc                  : 4,772
+weights (ro)          : 5,064 B (4.95 KiB)
+activations (rw)      : 96 B (96 B) 
+ram (total)           : 110 B (110 B) = 96 + 12 + 2
 
-Model name - model ['input_0'] ['dense_8_nl']
---------------------------------------------------------------------------------------------------------------------------
-id   layer (type)                oshape   param/size    macc    connected to   |   c_size           c_macc   c_type      
---------------------------------------------------------------------------------------------------------------------------
-0    input_0 (Input)             (c:12)                                        |                            
-     dense_5 (Dense)             (c:32)   416/1,664     416     input_0        |   -1,280(-76.9%)            dense(c4)[0]
---------------------------------------------------------------------------------------------------------------------------
-1    dense_6 (Dense)             (c:64)   2,112/8,448   2,112   dense_5        |   -7,104(-84.1%)            dense(c4)[1]
-     dense_6_nl (Nonlinearity)   (c:64)                 640     dense_6        |                             nl()[2]     
---------------------------------------------------------------------------------------------------------------------------
-2    dense_7 (Dense)             (c:32)   2,080/8,320   2,080   dense_6_nl     |   -7,104(-85.4%)            dense(c4)[3]
-     dense_7_nl (Nonlinearity)   (c:32)                 320     dense_7        |                             nl()[4]     
---------------------------------------------------------------------------------------------------------------------------
-3    dense_8 (Dense)             (c:2)    66/264        66      dense_7_nl     |                             dense()[5]  
-     dense_8_nl (Nonlinearity)   (c:2)                  20      dense_8        |                             nl()/o[6]   
---------------------------------------------------------------------------------------------------------------------------
-model/c-model: macc=5,654/5,654  weights=18,696/3,208 -15,488(-82.8%) activations=--/384 io=--/56
+Model name - uint8_quant_FDMLPmodel ['dense_input'] ['nl_6']
+-----------------------------------------------------------------------------------------------------------------
+id   layer (type)          oshape   param/size    macc    connected to   |   c_size   c_macc         c_type     
+-----------------------------------------------------------------------------------------------------------------
+0    dense_input (Input)   (c:12)                                        |                          
+     dense_0 (Dense)       (c:32)   416/512       416     dense_input    |                           dense(i)[0]
+-----------------------------------------------------------------------------------------------------------------
+1    dense_1 (Dense)       (c:64)   2,112/2,304   2,112   dense_0        |                           dense(i)[1]
+-----------------------------------------------------------------------------------------------------------------
+2    nl_2 (Nonlinearity)   (c:64)                 640     dense_1        |            -576(-90.0%)   nl(i)[2]   
+-----------------------------------------------------------------------------------------------------------------
+3    dense_3 (Dense)       (c:32)   2,080/2,176   2,080   nl_2           |                           dense(i)[3]
+-----------------------------------------------------------------------------------------------------------------
+4    nl_4 (Nonlinearity)   (c:32)                 320     dense_3        |            -288(-90.0%)   nl(i)[4]   
+-----------------------------------------------------------------------------------------------------------------
+5    dense_5 (Dense)       (c:2)    66/72         66      nl_4           |                           dense(i)[5]
+-----------------------------------------------------------------------------------------------------------------
+6    nl_6 (Nonlinearity)   (c:2)                  20      dense_5        |            -18(-90.0%)    nl(i)/o[6] 
+-----------------------------------------------------------------------------------------------------------------
+model/c-model: macc=5,654/4,772 -882(-15.6%) weights=5,064/5,064  activations=--/96 io=--/14
 
 
 
 Generated C-graph summary
 ------------------------------------------------------------------------------------------------------------------------
-model name            : model
+model name            : uint8_quant_fdmlpmodel
 c-name                : network2
 c-node #              : 7
 c-array #             : 16
-activations size      : 384
-weights size          : 3208
-macc                  : 5654
-inputs                : ['input_0_output']
-outputs               : ['dense_8_nl_output']
+activations size      : 96
+weights size          : 5064
+macc                  : 4772
+inputs                : ['dense_input_output']
+outputs               : ['nl_6_output']
 
 
 
 C-Arrays (16)
 ------------------------------------------------------------------------------------------------------------------------
-c_id  name (*_array)     item/size           mem-pool     c-type       fmt        comment            
+c_id  name (*_array)      item/size           mem-pool     c-type         fmt     comment            
 ------------------------------------------------------------------------------------------------------------------------
-0     input_0_output     12/48               user         float        float      /input             
-1     dense_5_output     32/128              activations  float        float                         
-2     dense_6_output     64/256              activations  float        float                         
-3     dense_6_nl_output  64/256              activations  float        float                         
-4     dense_7_output     32/128              activations  float        float                         
-5     dense_7_nl_output  32/128              activations  float        float                         
-6     dense_8_output     2/8                 activations  float        float                         
-7     dense_8_nl_output  2/8                 user         float        float      /output            
-8     dense_5_weights    384/256             weights      const float  c4 (LUT4)                     
-9     dense_5_bias       32/128              weights      const float  float                         
-10    dense_6_weights    2048/1088           weights      const float  c4 (LUT4)                     
-11    dense_6_bias       64/256              weights      const float  float                         
-12    dense_7_weights    2048/1088           weights      const float  c4 (LUT4)                     
-13    dense_7_bias       32/128              weights      const float  float                         
-14    dense_8_weights    64/256              weights      const float  float                         
-15    dense_8_bias       2/8                 weights      const float  float                         
+0     dense_input_output  12/12               user         int8_t         int/sa  /input             
+1     dense_0_output      32/32               activations  int8_t         int/sa                     
+2     dense_1_output      64/64               activations  int8_t         int/sa                     
+3     nl_2_output         64/64               activations  int8_t         int/sa                     
+4     dense_3_output      32/32               activations  int8_t         int/sa                     
+5     nl_4_output         32/32               activations  int8_t         int/sa                     
+6     dense_5_output      2/2                 activations  int8_t         int/sa                     
+7     nl_6_output         2/2                 user         int8_t         int/sa  /output            
+8     dense_0_weights     384/384             weights      const int8_t   int/sa                     
+9     dense_0_bias        32/128              weights      const int32_t  int/sa                     
+10    dense_1_weights     2048/2048           weights      const int8_t   int/sa                     
+11    dense_1_bias        64/256              weights      const int32_t  int/sa                     
+12    dense_3_weights     2048/2048           weights      const int8_t   int/sa                     
+13    dense_3_bias        32/128              weights      const int32_t  int/sa                     
+14    dense_5_weights     64/64               weights      const int8_t   int/sa                     
+15    dense_5_bias        2/8                 weights      const int32_t  int/sa                     
 ------------------------------------------------------------------------------------------------------------------------
 
 
 
 C-Layers (7)
 ------------------------------------------------------------------------------------------------------------------------
-c_id  name (*_layer)  id  layer_ macc        rom         tensors               shape (array id)                       
+c_id  name (*_layer)  id  layer_ macc        rom         tensors                shape (array id)                       
 ------------------------------------------------------------------------------------------------------------------------
-0     dense_5         0   dense  416         384         I: input_0_output     (1, 1, 1, 12) (0)                      
-                                                         W: dense_5_weights                                           
-                                                         W: dense_5_bias                                              
-                                                         O: dense_5_output     (1, 1, 1, 32) (1)                      
+0     dense_0         0   dense  416         512         I: dense_input_output  (1, 1, 1, 12) (0)                      
+                                                         W: dense_0_weights                                            
+                                                         W: dense_0_bias                                               
+                                                         O: dense_0_output      (1, 1, 1, 32) (1)                      
 ------------------------------------------------------------------------------------------------------------------------
-1     dense_6         1   dense  2112        1344        I: dense_5_output     (1, 1, 1, 32) (1)                      
-                                                         W: dense_6_weights                                           
-                                                         W: dense_6_bias                                              
-                                                         O: dense_6_output     (1, 1, 1, 64) (2)                      
+1     dense_1         1   dense  2112        2304        I: dense_0_output      (1, 1, 1, 32) (1)                      
+                                                         W: dense_1_weights                                            
+                                                         W: dense_1_bias                                               
+                                                         O: dense_1_output      (1, 1, 1, 64) (2)                      
 ------------------------------------------------------------------------------------------------------------------------
-2     dense_6_nl      1   nl     640         0           I: dense_6_output     (1, 1, 1, 64) (2)                      
-                                                         O: dense_6_nl_output  (1, 1, 1, 64) (3)                      
+2     nl_2            2   nl     64          0           I: dense_1_output      (1, 1, 1, 64) (2)                      
+                                                         O: nl_2_output         (1, 1, 1, 64) (3)                      
 ------------------------------------------------------------------------------------------------------------------------
-3     dense_7         2   dense  2080        1216        I: dense_6_nl_output  (1, 1, 1, 64) (3)                      
-                                                         W: dense_7_weights                                           
-                                                         W: dense_7_bias                                              
-                                                         O: dense_7_output     (1, 1, 1, 32) (4)                      
+3     dense_3         3   dense  2080        2176        I: nl_2_output         (1, 1, 1, 64) (3)                      
+                                                         W: dense_3_weights                                            
+                                                         W: dense_3_bias                                               
+                                                         O: dense_3_output      (1, 1, 1, 32) (4)                      
 ------------------------------------------------------------------------------------------------------------------------
-4     dense_7_nl      2   nl     320         0           I: dense_7_output     (1, 1, 1, 32) (4)                      
-                                                         O: dense_7_nl_output  (1, 1, 1, 32) (5)                      
+4     nl_4            4   nl     32          0           I: dense_3_output      (1, 1, 1, 32) (4)                      
+                                                         O: nl_4_output         (1, 1, 1, 32) (5)                      
 ------------------------------------------------------------------------------------------------------------------------
-5     dense_8         3   dense  66          264         I: dense_7_nl_output  (1, 1, 1, 32) (5)                      
-                                                         W: dense_8_weights                                           
-                                                         W: dense_8_bias                                              
-                                                         O: dense_8_output     (1, 1, 1, 2) (6)                       
+5     dense_5         5   dense  66          72          I: nl_4_output         (1, 1, 1, 32) (5)                      
+                                                         W: dense_5_weights                                            
+                                                         W: dense_5_bias                                               
+                                                         O: dense_5_output      (1, 1, 1, 2) (6)                       
 ------------------------------------------------------------------------------------------------------------------------
-6     dense_8_nl      3   nl     20          0           I: dense_8_output     (1, 1, 1, 2) (6)                       
-                                                         O: dense_8_nl_output  (1, 1, 1, 2) (7)                       
+6     nl_6            6   nl     2           0           I: dense_5_output      (1, 1, 1, 2) (6)                       
+                                                         O: nl_6_output         (1, 1, 1, 2) (7)                       
 ------------------------------------------------------------------------------------------------------------------------
 
 
 
-Complexity report per layer - macc=5,654 weights=3,208 act=384 ram_io=56
----------------------------------------------------------------------------
-id   name         c_macc                    c_rom                     c_id
----------------------------------------------------------------------------
-0    dense_5      |||                7.4%   |||||             12.0%   [0] 
-1    dense_6      ||||||||||||||||  37.4%   ||||||||||||||||  41.9%   [1] 
-1    dense_6_nl   |||||             11.3%   |                  0.0%   [2] 
-2    dense_7      |||||||||||||||   36.8%   ||||||||||||||    37.9%   [3] 
-2    dense_7_nl   |||                5.7%   |                  0.0%   [4] 
-3    dense_8      |                  1.2%   |||                8.2%   [5] 
-3    dense_8_nl   |                  0.4%   |                  0.0%   [6] 
+Complexity report per layer - macc=4,772 weights=5,064 act=96 ram_io=14
+------------------------------------------------------------------------
+id   name      c_macc                    c_rom                     c_id
+------------------------------------------------------------------------
+0    dense_0   |||                8.7%   ||||              10.1%   [0] 
+1    dense_1   ||||||||||||||||  44.3%   ||||||||||||||||  45.5%   [1] 
+2    nl_2      |                  1.3%   |                  0.0%   [2] 
+3    dense_3   |||||||||||||||   43.6%   |||||||||||||||   43.0%   [3] 
+4    nl_4      |                  0.7%   |                  0.0%   [4] 
+5    dense_5   |                  1.4%   |                  1.4%   [5] 
+6    nl_6      |                  0.0%   |                  0.0%   [6] 
 
 Generated files (5)
 -------------------------------------------------------

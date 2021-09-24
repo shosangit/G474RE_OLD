@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    network2.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    Fri Sep 10 14:17:41 2021
+  * @date    Fri Sep 24 13:49:31 2021
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -27,7 +27,7 @@
 
 /******************************************************************************/
 #define AI_NETWORK2_MODEL_NAME          "network2"
-#define AI_NETWORK2_ORIGIN_MODEL_NAME   "model"
+#define AI_NETWORK2_ORIGIN_MODEL_NAME   "uint8_quant_fdmlpmodel"
 
 /******************************************************************************/
 #define AI_NETWORK2_ACTIVATIONS_ALIGNMENT   (4)
@@ -37,7 +37,7 @@
 /******************************************************************************/
 #define AI_NETWORK2_IN_NUM        (1)
 #define AI_NETWORK2_IN { \
-  AI_BUFFER_OBJ_INIT(AI_BUFFER_FORMAT_FLOAT, 1, 1, 12, 1, NULL), \
+  AI_BUFFER_OBJ_INIT(AI_BUFFER_FORMAT_S8, 1, 1, 12, 1, NULL), \
 }
 #define AI_NETWORK2_IN_SIZE { \
   AI_NETWORK2_IN_1_SIZE, \
@@ -47,12 +47,12 @@
 }
 #define AI_NETWORK2_IN_1_CHANNEL     (12)
 #define AI_NETWORK2_IN_1_SIZE        (12)
-#define AI_NETWORK2_IN_1_SIZE_BYTES  (AI_NETWORK2_IN_1_SIZE * 4)
+#define AI_NETWORK2_IN_1_SIZE_BYTES  (AI_NETWORK2_IN_1_SIZE * 1)
 
 /******************************************************************************/
 #define AI_NETWORK2_OUT_NUM       (1)
 #define AI_NETWORK2_OUT { \
-  AI_BUFFER_OBJ_INIT(AI_BUFFER_FORMAT_FLOAT, 1, 1, 2, 1, NULL), \
+  AI_BUFFER_OBJ_INIT(AI_BUFFER_FORMAT_S8, 1, 1, 2, 1, NULL), \
 }
 #define AI_NETWORK2_OUT_SIZE { \
   AI_NETWORK2_OUT_1_SIZE, \
@@ -62,7 +62,7 @@
 }
 #define AI_NETWORK2_OUT_1_CHANNEL     (2)
 #define AI_NETWORK2_OUT_1_SIZE        (2)
-#define AI_NETWORK2_OUT_1_SIZE_BYTES  (AI_NETWORK2_OUT_1_SIZE * 4)
+#define AI_NETWORK2_OUT_1_SIZE_BYTES  (AI_NETWORK2_OUT_1_SIZE * 1)
 
 /******************************************************************************/
 #define AI_NETWORK2_N_NODES (7)

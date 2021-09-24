@@ -1,6 +1,6 @@
 
 #ifdef __cplusplus
-extern "C" {
+ extern "C" {
 #endif
 /**
   ******************************************************************************
@@ -49,21 +49,21 @@ extern "C" {
   *
   ******************************************************************************
   */
-/*
- * Description
- *   v1.0 - Minimum template to show how to use the Embedded Client API
- *          model. Only one input and one output is supported. All
- *          memory resources are allocated statically (AI_NETWORK_XX, defines
- *          are used).
- *          Re-target of the printf function is out-of-scope.
- *
- *   For more information, see the embeded documentation:
- *
- *       [1] %X_CUBE_AI_DIR%/Documentation/index.html
- *
- *   X_CUBE_AI_DIR indicates the location where the X-CUBE-AI pack is installed
- *   typical : C:\Users\<user_name>\STM32Cube\Repository\STMicroelectronics\X-CUBE-AI\6.0.0
- */
+ /*
+  * Description
+  *   v1.0 - Minimum template to show how to use the Embedded Client API
+  *          model. Only one input and one output is supported. All
+  *          memory resources are allocated statically (AI_NETWORK_XX, defines
+  *          are used).
+  *          Re-target of the printf function is out-of-scope.
+  *
+  *   For more information, see the embeded documentation:
+  *
+  *       [1] %X_CUBE_AI_DIR%/Documentation/index.html
+  *
+  *   X_CUBE_AI_DIR indicates the location where the X-CUBE-AI pack is installed
+  *   typical : C:\Users\<user_name>\STM32Cube\Repository\STMicroelectronics\X-CUBE-AI\6.0.0
+  */
 /* Includes ------------------------------------------------------------------*/
 /* System headers */
 #include <stdint.h>
@@ -131,7 +131,7 @@ static ai_u8 out_data_s[AI_NETWORK2_OUT_1_SIZE_BYTES];
 
 static void ai_log_err(const ai_error err, const char *fct)
 {
-    /* USER CODE BEGIN log */
+  /* USER CODE BEGIN log */
     if (fct)
         printf("TEMPLATE - Error (%s) - type=0x%02x code=0x%02x\r\n", fct,
                err.type, err.code);
@@ -139,61 +139,61 @@ static void ai_log_err(const ai_error err, const char *fct)
         printf("TEMPLATE - Error - type=0x%02x code=0x%02x\r\n", err.type, err.code);
 
     do {} while (1);
-    /* USER CODE END log */
+  /* USER CODE END log */
 }
 
 static int ai_boostrap(ai_handle w_addr, ai_handle act_addr)
 {
-    ai_error err;
+  ai_error err;
 
-    /* 1 - Create an instance of the model */
-    err = ai_network2_create(&network2, AI_NETWORK2_DATA_CONFIG);
-    if (err.type != AI_ERROR_NONE) {
-        ai_log_err(err, "ai_network2_create");
-        return -1;
+  /* 1 - Create an instance of the model */
+  err = ai_network2_create(&network2, AI_NETWORK2_DATA_CONFIG);
+  if (err.type != AI_ERROR_NONE) {
+    ai_log_err(err, "ai_network2_create");
+    return -1;
+  }
+
+  /* 2 - Initialize the instance */
+  const ai_network_params params = AI_NETWORK_PARAMS_INIT(
+      AI_NETWORK2_DATA_WEIGHTS(w_addr),
+      AI_NETWORK2_DATA_ACTIVATIONS(act_addr) );
+
+  if (!ai_network2_init(network2, &params)) {
+      err = ai_network2_get_error(network2);
+      ai_log_err(err, "ai_network2_init");
+      return -1;
     }
 
-    /* 2 - Initialize the instance */
-    const ai_network_params params = AI_NETWORK_PARAMS_INIT(
-                                         AI_NETWORK2_DATA_WEIGHTS(w_addr),
-                                         AI_NETWORK2_DATA_ACTIVATIONS(act_addr) );
+  /* 3 - Retrieve the network info of the created instance */
+  if (!ai_network2_get_info(network2, &network2_info)) {
+    err = ai_network2_get_error(network2);
+    ai_log_err(err, "ai_network2_get_error");
+    ai_network2_destroy(network2);
+    network2 = AI_HANDLE_NULL;
+    return -3;
+  }
 
-    if (!ai_network2_init(network2, &params)) {
-        err = ai_network2_get_error(network2);
-        ai_log_err(err, "ai_network2_init");
-        return -1;
-    }
-
-    /* 3 - Retrieve the network info of the created instance */
-    if (!ai_network2_get_info(network2, &network2_info)) {
-        err = ai_network2_get_error(network2);
-        ai_log_err(err, "ai_network2_get_error");
-        ai_network2_destroy(network2);
-        network2 = AI_HANDLE_NULL;
-        return -3;
-    }
-
-    return 0;
+  return 0;
 }
 
 static int ai_run(void *data_in, void *data_out)
 {
-    ai_i32 batch;
+  ai_i32 batch;
 
-    ai_buffer *ai_input = network2_info.inputs;
-    ai_buffer *ai_output = network2_info.outputs;
+  ai_buffer *ai_input = network2_info.inputs;
+  ai_buffer *ai_output = network2_info.outputs;
 
-    ai_input[0].data = AI_HANDLE_PTR(data_in);
-    ai_output[0].data = AI_HANDLE_PTR(data_out);
+  ai_input[0].data = AI_HANDLE_PTR(data_in);
+  ai_output[0].data = AI_HANDLE_PTR(data_out);
 
-    batch = ai_network2_run(network2, ai_input, ai_output);
-    if (batch != 1) {
-        ai_log_err(ai_network2_get_error(network2),
-                   "ai_network2_run");
-        return -1;
-    }
+  batch = ai_network2_run(network2, ai_input, ai_output);
+  if (batch != 1) {
+    ai_log_err(ai_network2_get_error(network2),
+        "ai_network2_run");
+    return -1;
+  }
 
-    return 0;
+  return 0;
 }
 
 /* USER CODE BEGIN 2 */
